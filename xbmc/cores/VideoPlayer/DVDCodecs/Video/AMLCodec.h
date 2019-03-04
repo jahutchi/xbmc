@@ -44,6 +44,7 @@ public:
   void          SetDrain(bool drain){m_drain = drain;};
   void          SetVideoRect(const CRect &SrcRect, const CRect &DestRect);
   void          SetVideoRate(int videoRate);
+  void          SetVideoRateFps(float fps);
   int           GetOMXPts() const { return static_cast<int>(m_cur_pts); }
   uint32_t      GetBufferIndex() const { return m_bufferIndex; };
   static float  OMXPtsToSeconds(int omxpts);

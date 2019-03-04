@@ -1550,39 +1550,22 @@ bool CAMLCodec::OpenDecoder(CDVDStreamInfo &hints)
   am_private->video_ratio      = ((int32_t)video_ratio.num << 16) | video_ratio.den;
   am_private->video_ratio64    = ((int64_t)video_ratio.num << 32) | video_ratio.den;
 
+
   // handle video rate
+  float target_fps;
   if (hints.fpsrate > 0 && hints.fpsscale != 0)
   {
-    // then ffmpeg avg_frame_rate next
-    am_private->video_rate = 0.5 + (float)UNIT_FREQ * hints.fpsscale / hints.fpsrate;
+    if (hints.fpsrate / hints.fpsscale <= 120)
+      target_fps = (float)hints.fpsrate / (float)hints.fpsscale;
   }
 
-  // check for 1920x1080, interlaced, 25 fps
-  // incorrectly reported as 50 fps (yes, video_rate == 1920)
-  if (hints.width == 1920 && am_private->video_rate == 1920)
-  {
-    CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder video_rate exception");
-    am_private->video_rate = 0.5 + (float)UNIT_FREQ * 1001 / 25000;
-  }
+  // if invalid hints were sent then set an initial default
+  // SetVideoRateFps will be called again on renderer reconfigure
+  // using the fps rate calculated by VideoPlayer
+  if (!target_fps)
+    target_fps = CDisplaySettings::GetInstance().GetCurrentResolutionInfo().fRefreshRate;
 
-  // check for SD h264 content incorrectly reported as 60 fsp
-  // mp4/avi containers :(
-  if (hints.codec == AV_CODEC_ID_H264 && hints.width <= 720 && am_private->video_rate == 1602)
-  {
-    CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder video_rate exception");
-    am_private->video_rate = 0.5 + (float)UNIT_FREQ * 1001 / 24000;
-  }
-
-  // check for SD h264 content incorrectly reported as some form of 30 fsp
-  // mp4/avi containers :(
-  if (hints.codec == AV_CODEC_ID_H264 && hints.width <= 720)
-  {
-    if (am_private->video_rate >= 3200 && am_private->video_rate <= 3210)
-    {
-      CLog::Log(LOGDEBUG, "CAMLCodec::OpenDecoder video_rate exception");
-      am_private->video_rate = 0.5 + (float)UNIT_FREQ * 1001 / 24000;
-    }
-  }
+  SetVideoRateFps(target_fps);
 
   // handle orientation
   am_private->video_rotation_degree = 0;
@@ -2394,4 +2377,46 @@ void CAMLCodec::SetVideoRate(int videoRate)
 {
   if (am_private)
     am_private->video_rate = videoRate;
+}
+
+void CAMLCodec::SetVideoRateFps(float fps)
+{
+  if (!am_private || fps <= 0)
+    return;
+
+  unsigned int videoRate = (int)(0.5 + ((float)UNIT_FREQ / fps));
+
+  // check for 1920x1080, interlaced, 25 fps
+  // incorrectly reported as 50 fps (yes, video_rate == 1920)
+  if (am_private->video_width == 1920 && videoRate == 1920)
+  {
+    CLog::Log(LOGDEBUG, "CAMLCodec::SetVideoRateFps video_rate exception");
+    videoRate = 0.5 + (float)UNIT_FREQ * 1001 / 25000;
+  }
+
+  // check for SD h264 content incorrectly reported as 60 fsp
+  // mp4/avi containers :(
+  if (am_private->video_codec_id == AV_CODEC_ID_H264 && am_private->video_width <= 720 && videoRate == 1602)
+  {
+    CLog::Log(LOGDEBUG, "CAMLCodec::SetVideoRateFps video_rate exception");
+    videoRate = 0.5 + (float)UNIT_FREQ * 1001 / 24000;
+  }
+
+  // check for SD h264 content incorrectly reported as some form of 30 fsp
+  // mp4/avi containers :(
+  if (am_private->video_codec_id == AV_CODEC_ID_H264 && am_private->video_width <= 720)
+  {
+    if (videoRate >= 3200 && videoRate <= 3210)
+    {
+      CLog::Log(LOGDEBUG, "CAMLCodec::SetVideoRateFps video_rate exception");
+      videoRate = 0.5 + (float)UNIT_FREQ * 1001 / 24000;
+    }
+  }
+
+  if (videoRate != am_private->video_rate)
+  {
+    CLog::Log(LOGDEBUG, "CAMLCodec::SetVideoRateFps video_rate adjusted from: %d to: %d (%f fps)", am_private->video_rate, videoRate, fps);
+    am_private->video_rate = videoRate;
+  }
+
 }

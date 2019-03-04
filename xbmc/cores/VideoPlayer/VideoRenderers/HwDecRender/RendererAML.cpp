@@ -18,6 +18,7 @@
 #include "cores/VideoPlayer/VideoRenderers/RenderFactory.h"
 #include "cores/VideoPlayer/VideoRenderers/RenderFlags.h"
 #include "settings/AdvancedSettings.h"
+#include "utils/MathUtils.h"
 
 CRendererAML::CRendererAML()
  : m_prevVPts(-1)
@@ -61,6 +62,20 @@ bool CRendererAML::Configure(const VideoPicture &picture, float fps, unsigned in
   ManageRenderArea();
 
   m_bConfigured = true;
+
+  if (picture.videoBuffer)
+  {
+    CLog::Log(LOGDEBUG, "CRendererAML::Configure: picture.iFlags=%d", picture.iFlags);
+
+    //Adjustment for interlaced content
+    if ((picture.iFlags & DVP_FLAG_INTERLACED))
+    {
+      fps = fps / 2;
+      CLog::Log(LOGDEBUG, "CRendererAML::Configure: interlaced detected, halving fps to: %f", fps);
+    }
+    CAMLVideoBuffer *amli = dynamic_cast<CAMLVideoBuffer *>(picture.videoBuffer);
+    amli->m_amlCodec->SetVideoRateFps(fps);
+  }
 
   return true;
 }
