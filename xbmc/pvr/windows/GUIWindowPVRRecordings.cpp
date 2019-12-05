@@ -20,6 +20,7 @@
 #include "settings/SettingsComponent.h"
 #include "threads/SingleLock.h"
 #include "utils/URIUtils.h"
+#include "video/VideoLibraryQueue.h"
 #include "video/windows/GUIWindowVideoNav.h"
 
 #include "pvr/PVRGUIActions.h"
@@ -98,6 +99,24 @@ bool CGUIWindowPVRRecordingsBase::OnAction(const CAction &action)
       return true;
     }
   }
+  else if (action.GetID() == ACTION_TOGGLE_WATCHED)
+  {
+    const std::shared_ptr<CFileItem> pItem = m_vecItems->Get(m_viewControl.GetSelectedItem());
+    if (!pItem || pItem->IsParentFolder())
+      return false;
+
+    bool bUnWatched;
+    if (pItem->HasPVRRecordingInfoTag())
+      bUnWatched = pItem->GetPVRRecordingInfoTag()->GetPlayCount() == 0;
+    else if (pItem->m_bIsFolder)
+      bUnWatched = pItem->GetProperty("unwatchedepisodes").asInteger() > 0;
+    else
+      return false;
+
+    CVideoLibraryQueue::GetInstance().MarkAsWatched(pItem, bUnWatched);
+    return true;
+  }
+
   return CGUIWindowPVRBase::OnAction(action);
 }
 
