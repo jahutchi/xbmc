@@ -1798,10 +1798,11 @@ void CVideoPlayer::HandlePlaySpeed()
         SetCaching(CACHESTATE_INIT);
     }
 
-    // if audio stream stalled, wait until demux queue filled 10%
+    // if audio stream stalled, wait until demux queue filled 20%
     if (m_pInputStream->IsRealtime() &&
-        (m_CurrentAudio.id < 0 || m_VideoPlayerAudio->GetLevel() > 10))
+        (m_CurrentAudio.id < 0 || m_VideoPlayerAudio->GetLevel() > 20))
     {
+      CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Real-time stream audio buffer now sufficiently full - %d pct", m_VideoPlayerAudio->GetLevel());
       SetCaching(CACHESTATE_INIT);
     }
   }
@@ -1882,22 +1883,10 @@ void CVideoPlayer::HandlePlaySpeed()
         }
       }
       // care for live streams
-      else if (m_pInputStream->IsRealtime())
+      else if (m_pInputStream->IsRealtime() && m_CurrentAudio.id >= 0 && m_VideoPlayerAudio->GetLevel() <= 10)
       {
-        if (m_CurrentAudio.id >= 0)
-        {
-          double adjust = -1.0; // a unique value
-          if (m_clock.GetSpeedAdjust() >= 0 && m_VideoPlayerAudio->GetLevel() < 5)
-            adjust = -0.05;
-
-          if (m_clock.GetSpeedAdjust() < 0 && m_VideoPlayerAudio->GetLevel() > 10)
-            adjust = 0.0;
-
-          if (adjust != -1.0)
-          {
-            m_clock.SetSpeedAdjust(adjust);
-          }
-        }
+        CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Real-time stream audio buffer running low - %d pct - caching", m_VideoPlayerAudio->GetLevel());
+        SetCaching(CACHESTATE_FULL);
       }
     }
   }
@@ -1916,6 +1905,20 @@ void CVideoPlayer::HandlePlaySpeed()
     bool audio = m_CurrentAudio.id < 0 || (m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_WAITSYNC) ||
                  (m_CurrentAudio.packets == 0 && m_CurrentVideo.packets > threshold) ||
                  (!m_VideoPlayerVideo->AcceptsData() && m_VideoPlayerAudio->GetLevel() < 10);
+
+    if (audio && m_CurrentAudio.id >= 0 && m_pInputStream->IsRealtime())
+    {
+      if (m_VideoPlayerVideo->AcceptsData())
+      {
+        // For real-time streams, only continue when audio buffer is sufficiently full
+        if (m_VideoPlayerAudio->GetLevel() <= 20)
+          audio = 0;
+        else
+          CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Real-time stream - audio buffer sufficiently full");
+      }
+      else
+        CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Real-time stream - audio buffer not sufficiently full, but VideoPlayer does not accept data");
+    }
 
     if (m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_WAITSYNC &&
         (m_CurrentAudio.avsync == CCurrentStream::AV_SYNC_CONT ||
@@ -1937,29 +1940,37 @@ void CVideoPlayer::HandlePlaySpeed()
     {
       double clock = 0;
       if (m_CurrentAudio.syncState == IDVDStreamPlayer::SYNC_WAITSYNC)
-        CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Audio - pts: %f, cache: %f, totalcache: %f",
-                             m_CurrentAudio.starttime, m_CurrentAudio.cachetime, m_CurrentAudio.cachetotal);
+        CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Audio - pts: %0.3f, cache: %0.3f, totalcache: %0.3f, packets:%d level:%d, isrealtime:%d",
+                             m_CurrentAudio.starttime / DVD_TIME_BASE, m_CurrentAudio.cachetime / DVD_TIME_BASE, m_CurrentAudio.cachetotal / DVD_TIME_BASE, m_CurrentAudio.packets, m_VideoPlayerAudio->GetLevel(), m_pInputStream->IsRealtime());
       if (m_CurrentVideo.syncState == IDVDStreamPlayer::SYNC_WAITSYNC)
-        CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Video - pts: %f, cache: %f, totalcache: %f",
-                             m_CurrentVideo.starttime, m_CurrentVideo.cachetime, m_CurrentVideo.cachetotal);
+        CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Video - pts: %0.3f, cache: %0.3f, totalcache: %0.3f, packets:%d level:%d",
+                             m_CurrentVideo.starttime / DVD_TIME_BASE, m_CurrentVideo.cachetime / DVD_TIME_BASE, m_CurrentVideo.cachetotal / DVD_TIME_BASE, m_CurrentVideo.packets, m_processInfo->GetLevelVQ());
 
       if (m_CurrentVideo.starttime != DVD_NOPTS_VALUE && m_CurrentVideo.packets > 0 &&
           m_playSpeed == DVD_PLAYSPEED_PAUSE)
       {
         clock = m_CurrentVideo.starttime;
+        CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Paused Stream - clock set to: %0.3f", clock / DVD_TIME_BASE);
       }
       else if (m_CurrentAudio.starttime != DVD_NOPTS_VALUE && m_CurrentAudio.packets > 0)
       {
         if (m_pInputStream->IsRealtime())
+        {
           clock = m_CurrentAudio.starttime - m_CurrentAudio.cachetotal - DVD_MSEC_TO_TIME(400);
+          CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Realtime stream - clock set to: %0.3f", clock / DVD_TIME_BASE);
+        }
         else
+        {
           clock = m_CurrentAudio.starttime - m_CurrentAudio.cachetime;
+          CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Non-Realtime stream - clock set to: %0.3f", clock / DVD_TIME_BASE);
+        }
 
         if (m_CurrentVideo.starttime != DVD_NOPTS_VALUE && (m_CurrentVideo.packets > 0))
         {
           if (m_CurrentVideo.starttime - m_CurrentVideo.cachetotal < clock)
           {
             clock = m_CurrentVideo.starttime - m_CurrentVideo.cachetotal;
+            CLog::Log(LOGDEBUG, "VideoPlayer::Sync - clock set to: %0.3f since video start point lower than previous clock", clock / DVD_TIME_BASE);
           }
           else if (m_CurrentVideo.starttime > m_CurrentAudio.starttime &&
                    !m_pInputStream->IsRealtime())
@@ -1968,16 +1979,39 @@ void CVideoPlayer::HandlePlaySpeed()
             //@todo hardcoded 8 seconds in message queue
             double maxAudioTime = clock + DVD_MSEC_TO_TIME(80 * audioLevel);
             if ((m_CurrentVideo.starttime - m_CurrentVideo.cachetotal) > maxAudioTime)
+            {
               clock = maxAudioTime;
+              CLog::Log(LOGDEBUG, "VideoPlayer::Sync - clock set to: %0.3f based on MaxAudioTime", clock / DVD_TIME_BASE);
+            }
             else
+            {
               clock = m_CurrentVideo.starttime - m_CurrentVideo.cachetotal;
+              CLog::Log(LOGDEBUG, "VideoPlayer::Sync - clock set to: %0.3f based on video start time", clock / DVD_TIME_BASE);
+            }
           }
         }
       }
+
+      //Real-time streams with no audio PTS value (e.g. some HTTP-based streams)
+      else if (m_CurrentAudio.starttime == DVD_NOPTS_VALUE && m_CurrentAudio.packets > 0 && m_pInputStream->IsRealtime())
+      {
+        clock = 0 - m_CurrentAudio.cachetotal - DVD_MSEC_TO_TIME(1000);
+        CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Realtime stream (no PTS) - clock set to: %0.3f", clock / DVD_TIME_BASE);
+      }
       else if (m_CurrentVideo.starttime != DVD_NOPTS_VALUE && m_CurrentVideo.packets > 0)
       {
-        clock = m_CurrentVideo.starttime - m_CurrentVideo.cachetotal;
+        if (m_pInputStream->IsRealtime())
+        {
+          clock = m_CurrentVideo.starttime - m_CurrentVideo.cachetotal - DVD_MSEC_TO_TIME(400);
+          CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Realtime stream - clock set from VIDEO to: %0.3f", clock / DVD_TIME_BASE);
+        }
+        else
+        {
+          clock = m_CurrentVideo.starttime - m_CurrentVideo.cachetotal;
+          CLog::Log(LOGDEBUG, "VideoPlayer::Sync - clock set from VIDEO to: %0.3f", clock / DVD_TIME_BASE);
+        }
       }
+      CLog::Log(LOGDEBUG, "VideoPlayer::Sync - Clock was set to: %0.3f", clock / DVD_TIME_BASE);
 
       m_clock.Discontinuity(clock);
       m_CurrentAudio.syncState = IDVDStreamPlayer::SYNC_INSYNC;
