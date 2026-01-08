@@ -390,8 +390,12 @@ bool CDVDVideoCodecAndroidMediaCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptio
   // mediacodec crashes with null size. Trap this...
   if (!hints.width || !hints.height)
   {
-    CLog::Log(LOGERROR, "CDVDVideoCodecAndroidMediaCodec::Open - {}", "null size, cannot handle");
-    goto FAIL;
+    RESOLUTION res = CServiceBroker::GetWinSystem()->GetGfxContext().GetVideoResolution();
+    RESOLUTION_INFO info = CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo(res);
+    // If no hints then use current monitor resolution for intial codec open
+    CLog::Log(LOGERROR, "CDVDVideoCodecAndroidMediaCodec::Open - width/height unknown: defaulting to monitor resolution {}x{}", info.iWidth, info.iHeight);
+    hints.width=info.iWidth;
+    hints.height=info.iHeight;
   }
   else if (hints.orientation && m_render_surface && CJNIBase::GetSDKVersion() < 23)
   {
