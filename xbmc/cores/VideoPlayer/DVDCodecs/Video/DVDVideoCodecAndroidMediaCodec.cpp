@@ -1591,6 +1591,23 @@ bool CDVDVideoCodecAndroidMediaCodec::ConfigureMediaCodec(void)
   else
       InitSurfaceTexture();
 
+  // Explicitly set frame rate for smooth playback (supports fractional rates)
+  // MediaCodec accepts both float and integer values
+  if (CJNIBase::GetSDKVersion() >= 21 && m_render_surface &&
+      m_hints.fpsrate > 0 && m_hints.fpsscale > 0)
+  {
+    const double fps =
+        static_cast<double>(m_hints.fpsrate) / static_cast<double>(m_hints.fpsscale);
+
+    // Use integer only if exact, otherwise prefer float for fractional rates
+    if (std::fabs(fps - std::round(fps)) < 0.0001)
+      mediaformat.setInteger(CJNIMediaFormat::KEY_FRAME_RATE,
+                              static_cast<int>(std::round(fps)));
+    else
+      mediaformat.setFloat(CJNIMediaFormat::KEY_FRAME_RATE,
+                            static_cast<float>(fps));
+  }
+
   // configure and start the codec.
   // use the MediaFormat that we have setup.
   // use a null MediaCrypto, our content is not encrypted.
