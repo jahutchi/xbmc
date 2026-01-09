@@ -1676,39 +1676,52 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
 
     m_videobuffer.dts = DVD_NOPTS_VALUE;
     m_videobuffer.pts = DVD_NOPTS_VALUE;
+
+    // Temporary debug instrumentation for PTS / duration behaviour
+    static int dbgFrame = 0;
+    dbgFrame++;
+
     bool enteredIf = false;
     if (pts != AV_NOPTS_VALUE)
     {
       enteredIf = true;
       m_videobuffer.pts = pts;
       m_videobuffer.pts += m_dtsShift;
+
+      int64_t ptsDelta = (m_lastPTS >= 0) ? (pts - m_lastPTS) : -1;
+
       if (m_lastPTS >= 0 && pts > m_lastPTS)
-        m_OutputDuration += pts - m_lastPTS;
+      {
+          m_OutputDuration += ptsDelta;
+          CLog::Log(LOGINFO,
+              "JAH [{}] Valid PTS delta: pts={} lastPTS={} delta={} OutputDuration={}",
+              dbgFrame, pts, m_lastPTS, ptsDelta, m_OutputDuration);
+      }
+      else
+      {
+          // TEMP HACK: enforce constant 50fps when PTS delta is invalid
+          m_OutputDuration += 20000;
+          CLog::Log(LOGINFO,
+              "JAH [{}] Forced duration fallback (50fps): pts={} lastPTS={} delta={} OutputDuration={}",
+              dbgFrame, pts, m_lastPTS, ptsDelta, m_OutputDuration);
+      }
       m_lastPTS = pts;
-      //HACK: default to 50fps & let's see what happens
-      m_OutputDuration = 20000;
+    }
+    {
+      CLog::Log(LOGINFO,
+            "JAH [{}] pts == AV_NOPTS_VALUE (no duration update)",
+            dbgFrame);
     }
 
-	// Log the Entry Flag
-	CLog::Log(LOGINFO, "JAH Logic: EnteredIF={}", enteredIf ? "YES" : "NO");
-
-	// Log m_videobuffer.pts
-	if ((int64_t)m_videobuffer.pts == (int64_t)DVD_NOPTS_VALUE)
-	    CLog::Log(LOGINFO, "JAH m_videobuffer.pts=DVD_NOPTS_VALUE");
-	else
-	    CLog::Log(LOGINFO, "JAH m_videobuffer.pts={}", m_videobuffer.pts);
-
-	// Log m_lastPTS
-	if ((int64_t)m_lastPTS == (int64_t)DVD_NOPTS_VALUE)
-	    CLog::Log(LOGINFO, "JAH m_lastPTS=DVD_NOPTS_VALUE");
-	else
-	    CLog::Log(LOGINFO, "JAH m_lastPTS={}", m_lastPTS);
-
-	// Log m_dtsShift
-	CLog::Log(LOGINFO, "JAH m_dtsShift={}", m_dtsShift);
-
-	// Log m_OutputDuration
-	CLog::Log(LOGINFO, "JAH m_OutputDuration={}", m_OutputDuration);
+    // Summary logging for this frame
+    CLog::Log(LOGINFO,
+          "JAH [{}] Summary: EnteredPTSIf={} videobuffer.pts={} lastPTS={} dtsShift={} OutputDuration={}",
+          dbgFrame,
+          enteredIf ? "YES" : "NO",
+          (m_videobuffer.pts == DVD_NOPTS_VALUE ? -1 : m_videobuffer.pts),
+          (m_lastPTS == DVD_NOPTS_VALUE ? -1 : m_lastPTS),
+          m_dtsShift,
+          m_OutputDuration);
 
 // KEY_WIDTH: Integer 
 if (mediaFormat.containsKey(CJNIMediaFormat::KEY_WIDTH))
