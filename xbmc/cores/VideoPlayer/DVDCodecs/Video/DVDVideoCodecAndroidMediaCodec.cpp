@@ -1684,10 +1684,66 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
 	// Log m_OutputDuration
 	CLog::Log(LOGINFO, "JAH m_OutputDuration={}", m_OutputDuration);
 
-	// Log MediaFormat frame rate hint
-	if (mediaFormat.containsKey(CJNIMediaFormat::KEY_FRAME_RATE))
-		CLog::Log(LOGINFO, "JAH mediaFormat.getFloat(CJNIMediaFormat::KEY_FRAME_RATE)={}", mediaFormat.getFloat(CJNIMediaFormat::KEY_FRAME_RATE));
+// KEY_WIDTH: Integer 
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_WIDTH))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getInteger(CJNIMediaFormat::KEY_WIDTH)={}", mediaFormat.getInteger(CJNIMediaFormat::KEY_WIDTH));
 
+// KEY_HEIGHT: Integer 
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_HEIGHT))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getInteger(CJNIMediaFormat::KEY_HEIGHT)={}", mediaFormat.getInteger(CJNIMediaFormat::KEY_HEIGHT));
+
+// KEY_COLOR_FORMAT: Integer 
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_COLOR_FORMAT))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getInteger(CJNIMediaFormat::KEY_COLOR_FORMAT)={}", mediaFormat.getInteger(CJNIMediaFormat::KEY_COLOR_FORMAT));
+
+// KEY_FRAME_RATE: Integer or Float 
+// Note: Handled as Float per your example to accommodate both[cite: 45].
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_FRAME_RATE))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getFloat(CJNIMediaFormat::KEY_FRAME_RATE)={}", mediaFormat.getFloat(CJNIMediaFormat::KEY_FRAME_RATE));
+
+// KEY_I_FRAME_INTERVAL: Integer or Float [cite: 9, 280]
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_I_FRAME_INTERVAL))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getFloat(CJNIMediaFormat::KEY_I_FRAME_INTERVAL)={}", mediaFormat.getFloat(CJNIMediaFormat::KEY_I_FRAME_INTERVAL));
+
+// KEY_MAX_WIDTH: Integer [cite: 9]
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_MAX_WIDTH))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getInteger(CJNIMediaFormat::KEY_MAX_WIDTH)={}", mediaFormat.getInteger(CJNIMediaFormat::KEY_MAX_WIDTH));
+
+// KEY_MAX_HEIGHT: Integer [cite: 9]
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_MAX_HEIGHT))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getInteger(CJNIMediaFormat::KEY_MAX_HEIGHT)={}", mediaFormat.getInteger(CJNIMediaFormat::KEY_MAX_HEIGHT));
+
+// KEY_DURATION: Long [cite: 41, 224]
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_DURATION))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getLong(CJNIMediaFormat::KEY_DURATION)={}", mediaFormat.getLong(CJNIMediaFormat::KEY_DURATION));
+
+// KEY_BIT_RATE: Integer [cite: 176]
+if (mediaFormat.containsKey(CJNIMediaFormat::KEY_BIT_RATE))
+    CLog::Log(LOGINFO, "JAH mediaFormat.getInteger(CJNIMediaFormat::KEY_BIT_RATE)={}", mediaFormat.getInteger(CJNIMediaFormat::KEY_BIT_RATE));
+
+/*std::string CJNIMediaFormat::KEY_MIME;
+std::string CJNIMediaFormat::KEY_SAMPLE_RATE;
+std::string CJNIMediaFormat::KEY_CHANNEL_COUNT;
+std::string CJNIMediaFormat::KEY_WIDTH;
+std::string CJNIMediaFormat::KEY_HEIGHT;
+std::string CJNIMediaFormat::KEY_MAX_INPUT_SIZE;
+std::string CJNIMediaFormat::KEY_BIT_RATE;
+std::string CJNIMediaFormat::KEY_COLOR_FORMAT;
+std::string CJNIMediaFormat::KEY_FRAME_RATE;
+std::string CJNIMediaFormat::KEY_I_FRAME_INTERVAL;
+std::string CJNIMediaFormat::KEY_DURATION;
+std::string CJNIMediaFormat::KEY_ROTATION;
+std::string CJNIMediaFormat::KEY_COLOR_RANGE;
+std::string CJNIMediaFormat::KEY_COLOR_STANDARD;
+std::string CJNIMediaFormat::KEY_COLOR_TRANSFER;
+std::string CJNIMediaFormat::KEY_CROP_BOTTOM;
+std::string CJNIMediaFormat::KEY_CROP_LEFT;
+std::string CJNIMediaFormat::KEY_CROP_RIGHT;
+std::string CJNIMediaFormat::KEY_CROP_TOP;
+std::string CJNIMediaFormat::KEY_HDR_STATIC_INFO;
+std::string CJNIMediaFormat::KEY_SLICE_HEIGHT;
+std::string CJNIMediaFormat::KEY_STRIDE;
+*/
     if (m_codecControlFlags & DVD_CODEC_CTRL_DROP)
     {
       m_codec->releaseOutputBuffer(index, false);
