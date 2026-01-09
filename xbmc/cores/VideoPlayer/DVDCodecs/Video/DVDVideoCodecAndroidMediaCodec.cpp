@@ -1652,6 +1652,7 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
 {
   int rtn = 0;
   int64_t timeout_us = (m_state == MEDIACODEC_STATE_WAIT_ENDOFSTREAM) ? 100000 : 10000;
+  CJNIMediaFormat mediaFormat = m_codec->getOutputFormat();
   CJNIMediaCodecBufferInfo bufferInfo;
 
   ssize_t index = m_codec->dequeueOutputBuffer(bufferInfo, timeout_us);
@@ -1668,8 +1669,8 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
   {
     int64_t pts = bufferInfo.presentationTimeUs();
 
-	CLog::Log(LOGINFO, "JH bufferInfo.presentationTimeUs={}", bufferInfo.presentationTimeUs());
-	CLog::Log(LOGINFO, "JH pts={}", pts);
+	CLog::Log(LOGINFO, "JAH bufferInfo.presentationTimeUs={}", bufferInfo.presentationTimeUs());
+	CLog::Log(LOGINFO, "JAH pts={}", pts);
 
     m_videobuffer.dts = DVD_NOPTS_VALUE;
     m_videobuffer.pts = DVD_NOPTS_VALUE;
@@ -1685,25 +1686,29 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
     }
 
 	// Log the Entry Flag
-	CLog::Log(LOGINFO, "JH Logic: EnteredIF={}", enteredIf ? "YES" : "NO");
+	CLog::Log(LOGINFO, "JAH Logic: EnteredIF={}", enteredIf ? "YES" : "NO");
 
 	// Log m_videobuffer.pts
 	if ((int64_t)m_videobuffer.pts == (int64_t)DVD_NOPTS_VALUE)
-	    CLog::Log(LOGINFO, "JH m_videobuffer.pts=DVD_NOPTS_VALUE");
+	    CLog::Log(LOGINFO, "JAH m_videobuffer.pts=DVD_NOPTS_VALUE");
 	else
-	    CLog::Log(LOGINFO, "JH m_videobuffer.pts={}", m_videobuffer.pts);
+	    CLog::Log(LOGINFO, "JAH m_videobuffer.pts={}", m_videobuffer.pts);
 
 	// Log m_lastPTS
 	if ((int64_t)m_lastPTS == (int64_t)DVD_NOPTS_VALUE)
-	    CLog::Log(LOGINFO, "JH m_lastPTS=DVD_NOPTS_VALUE");
+	    CLog::Log(LOGINFO, "JAH m_lastPTS=DVD_NOPTS_VALUE");
 	else
-	    CLog::Log(LOGINFO, "JH m_lastPTS={}", m_lastPTS);
+	    CLog::Log(LOGINFO, "JAH m_lastPTS={}", m_lastPTS);
 
 	// Log m_dtsShift
-	CLog::Log(LOGINFO, "JH m_dtsShift={}", m_dtsShift);
+	CLog::Log(LOGINFO, "JAH m_dtsShift={}", m_dtsShift);
 
 	// Log m_OutputDuration
-	CLog::Log(LOGINFO, "JH m_OutputDuration={}", m_OutputDuration);
+	CLog::Log(LOGINFO, "JAH m_OutputDuration={}", m_OutputDuration);
+
+	// Log MediaFormat frame rate hint
+	if (mediaformat.containsKey(CJNIMediaFormat::KEY_FRAME_RATE))
+		CLog::Log(LOGINFO, "JAH mediaFormat.getFloat(CJNIMediaFormat::KEY_FRAME_RATE)={}", mediaFormat.getFloat(CJNIMediaFormat::KEY_FRAME_RATE));
 
     if (m_codecControlFlags & DVD_CODEC_CTRL_DROP)
     {
