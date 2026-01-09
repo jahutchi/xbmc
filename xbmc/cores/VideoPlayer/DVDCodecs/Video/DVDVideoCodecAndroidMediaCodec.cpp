@@ -469,6 +469,7 @@ bool CDVDVideoCodecAndroidMediaCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptio
         default:
           break;
       }
+      m_useDTSforPTS = true;
       m_mime = "video/avc";
       m_formatname = "amc-h264";
       // check for h264-avcC and convert to h264-annex-b
