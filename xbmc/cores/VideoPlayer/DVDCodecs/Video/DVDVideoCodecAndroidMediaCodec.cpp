@@ -1146,24 +1146,47 @@ bool CDVDVideoCodecAndroidMediaCodec::AddData(const DemuxPacket &packet)
       }
 
 
-      // Translate from VideoPlayer dts/pts to MediaCodec pts,
-      // pts WILL get re-ordered by MediaCodec if needed.
-      // Do not try to pass pts as a unioned double/int64_t,
-      // some android devices will diddle with presentationTimeUs
-      // and you will get NaN back and VideoPlayerVideo will barf.
-      if (m_dtsShift == DVD_NOPTS_VALUE)
-        m_dtsShift = (dts == DVD_NOPTS_VALUE) ? 0 : dts;
+// Log initial states and inputs
+CLog::Log(LOGINFO, "JAH TIMING START: pts={}, dts={}, m_dtsShift(initial)={}, m_useDTSforPTS(initial)={}, m_invalidPTSValue={}", 
+          pts == DVD_NOPTS_VALUE ? "NOPTS" : std::to_string(pts), 
+          dts == DVD_NOPTS_VALUE ? "NOPTS" : std::to_string(dts), 
+          m_dtsShift, m_useDTSforPTS, m_invalidPTSValue);
 
-      int64_t presentationTimeUs = m_invalidPTSValue;
-      if (pts != DVD_NOPTS_VALUE)
-      {
-        presentationTimeUs = (pts - m_dtsShift);
-        m_useDTSforPTS = false;
-      }
-      else if ((presentationTimeUs < 0 || m_useDTSforPTS) && dts != DVD_NOPTS_VALUE)
-        presentationTimeUs = (dts - m_dtsShift);
-      else
-        presentationTimeUs = 0;
+// Translate from VideoPlayer dts/pts to MediaCodec pts,
+// pts WILL get re-ordered by MediaCodec if needed.
+// Do not try to pass pts as a unioned double/int64_t,
+// some android devices will diddle with presentationTimeUs
+// and you will get NaN back and VideoPlayerVideo will barf.
+if (m_dtsShift == DVD_NOPTS_VALUE)
+{
+    m_dtsShift = (dts == DVD_NOPTS_VALUE) ? 0 : dts;
+    CLog::Log(LOGINFO, "JAH m_dtsShift changed to {}", m_dtsShift);
+}
+
+int64_t presentationTimeUs = m_invalidPTSValue;
+CLog::Log(LOGINFO, "JAH presentationTimeUs(initial)={}", presentationTimeUs);
+
+bool oldUseDTS = m_useDTSforPTS; // Track for logging
+
+if (pts != DVD_NOPTS_VALUE)
+{
+    presentationTimeUs = (pts - m_dtsShift);
+    m_useDTSforPTS = false;
+    CLog::Log(LOGINFO, "JAH Path: [PTS branch] New presentationTimeUs={}, m_useDTSforPTS changed: {} -> false", 
+              presentationTimeUs, oldUseDTS);
+}
+else if ((presentationTimeUs < 0 || m_useDTSforPTS) && dts != DVD_NOPTS_VALUE)
+{
+    presentationTimeUs = (dts - m_dtsShift);
+    CLog::Log(LOGINFO, "JAH Path: [DTS fallback] New presentationTimeUs={}", presentationTimeUs);
+}
+else
+{
+    presentationTimeUs = 0;
+    CLog::Log(LOGINFO, "JAH Path: [Zero default] New presentationTimeUs=0");
+}
+
+CLog::Log(LOGINFO, "JAH TIMING END: Final presentationTimeUs={}, m_useDTSforPTS={}", presentationTimeUs, m_useDTSforPTS);
 
       int flags = 0;
       int offset = 0;
