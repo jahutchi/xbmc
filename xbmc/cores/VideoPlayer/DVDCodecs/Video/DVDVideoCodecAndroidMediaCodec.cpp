@@ -191,7 +191,9 @@ void CMediaCodecVideoBuffer::UpdateTexImage()
   // we hook the SurfaceTexture OnFrameAvailable callback
   // using CJNISurfaceTextureOnFrameAvailableListener and wait
   // on a CEvent to fire. 50ms seems to be a good max fallback.
-  WaitForFrame(50);
+  //WaitForFrame(50);
+  if (!WaitForFrame(2))
+    WaitForFrame(10);
 
   m_surfacetexture->updateTexImage();
   if (xbmc_jnienv()->ExceptionCheck())
