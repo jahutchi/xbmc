@@ -1719,7 +1719,7 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
           dbgFrame,
           enteredIf ? "YES" : "NO",
           (m_videobuffer.pts == DVD_NOPTS_VALUE ? -1 : m_videobuffer.pts),
-          (m_lastPTS == DVD_NOPTS_VALUE ? -1 : m_lastPTS),
+          (m_lastPTS >= 0 ? m_lastPTS : -1),
           m_dtsShift,
           m_OutputDuration);
 
