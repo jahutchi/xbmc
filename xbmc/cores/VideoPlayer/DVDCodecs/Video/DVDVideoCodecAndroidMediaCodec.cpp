@@ -1600,12 +1600,17 @@ bool CDVDVideoCodecAndroidMediaCodec::ConfigureMediaCodec(void)
         static_cast<double>(m_hints.fpsrate) / static_cast<double>(m_hints.fpsscale);
 
     // Use integer only if exact, otherwise prefer float for fractional rates
-    if (std::fabs(fps - std::round(fps)) < 0.0001)
+    if (std::fabs(fps - std::round(fps)) < 0.0001) {
       mediaformat.setInteger(CJNIMediaFormat::KEY_FRAME_RATE,
                               static_cast<int>(std::round(fps)));
-    else
+      CLog::Log(LOGINFO, "MediaCodec frame-rate configured: {:.5f} ({}/{})",
+                         fps, m_hints.fpsrate, m_hints.fpsscale);
+    } else {
       mediaformat.setFloat(CJNIMediaFormat::KEY_FRAME_RATE,
                             static_cast<float>(fps));
+      CLog::Log(LOGINFO, "MediaCodec fractional frame-rate configured: {:.5f} ({}/{})",
+                         fps, m_hints.fpsrate, m_hints.fpsscale);
+    }
   }
 
   // configure and start the codec.
