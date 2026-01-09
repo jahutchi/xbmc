@@ -1661,6 +1661,8 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
       if (m_lastPTS >= 0 && pts > m_lastPTS)
         m_OutputDuration += pts - m_lastPTS;
       m_lastPTS = pts;
+      //HACK: default to 50fps & let's see what happens
+      m_OutputDuration = 20000;
     }
 
 	// Log the Entry Flag
@@ -1704,14 +1706,6 @@ if (mediaFormat.containsKey(CJNIMediaFormat::KEY_FRAME_RATE))
 // KEY_I_FRAME_INTERVAL: Integer or Float [cite: 9, 280]
 if (mediaFormat.containsKey(CJNIMediaFormat::KEY_I_FRAME_INTERVAL))
     CLog::Log(LOGINFO, "JAH mediaFormat.getFloat(CJNIMediaFormat::KEY_I_FRAME_INTERVAL)={}", mediaFormat.getFloat(CJNIMediaFormat::KEY_I_FRAME_INTERVAL));
-
-// KEY_MAX_WIDTH: Integer [cite: 9]
-if (mediaFormat.containsKey(CJNIMediaFormat::KEY_MAX_WIDTH))
-    CLog::Log(LOGINFO, "JAH mediaFormat.getInteger(CJNIMediaFormat::KEY_MAX_WIDTH)={}", mediaFormat.getInteger(CJNIMediaFormat::KEY_MAX_WIDTH));
-
-// KEY_MAX_HEIGHT: Integer [cite: 9]
-if (mediaFormat.containsKey(CJNIMediaFormat::KEY_MAX_HEIGHT))
-    CLog::Log(LOGINFO, "JAH mediaFormat.getInteger(CJNIMediaFormat::KEY_MAX_HEIGHT)={}", mediaFormat.getInteger(CJNIMediaFormat::KEY_MAX_HEIGHT));
 
 // KEY_DURATION: Long [cite: 41, 224]
 if (mediaFormat.containsKey(CJNIMediaFormat::KEY_DURATION))
