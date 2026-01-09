@@ -58,6 +58,8 @@
 #include <androidjni/SurfaceTexture.h>
 #include <androidjni/UUID.h>
 
+#include <inttypes.h>
+
 using namespace KODI::MESSAGING;
 
 enum MEDIACODEC_STATES
@@ -1665,16 +1667,43 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
   if (index >= 0)
   {
     int64_t pts = bufferInfo.presentationTimeUs();
+
+	CLog::Log(LOGINFO, "JH bufferInfo.presentationTimeUs={}", bufferInfo.presentationTimeUs());
+	CLog::Log(LOGINFO, "JH pts={}", pts);
+
     m_videobuffer.dts = DVD_NOPTS_VALUE;
     m_videobuffer.pts = DVD_NOPTS_VALUE;
+    bool enteredIf = false;
     if (pts != AV_NOPTS_VALUE)
     {
+      enteredIf = true;
       m_videobuffer.pts = pts;
       m_videobuffer.pts += m_dtsShift;
       if (m_lastPTS >= 0 && pts > m_lastPTS)
         m_OutputDuration += pts - m_lastPTS;
       m_lastPTS = pts;
     }
+
+	// 1. Log the Entry Flag
+	CLog::Log(LOGINFO, "JH Logic: EnteredIF={}", enteredIf ? "YES" : "NO");
+
+	// 2. Log m_videobuffer.dts
+	if ((int64_t)m_videobuffer.dts == (int64_t)DVD_NOPTS_VALUE)
+	    CLog::Log(LOGINFO, "JH m_videobuffer.dts=DVD_NOPTS_VALUE");
+	else
+	    CLog::Log(LOGINFO, "JH m_videobuffer.dts={}", m_videobuffer.dts);
+
+	// 3. Log m_videobuffer.pts
+	if ((int64_t)m_videobuffer.pts == (int64_t)DVD_NOPTS_VALUE)
+	    CLog::Log(LOGINFO, "JH m_videobuffer.pts=DVD_NOPTS_VALUE");
+	else
+	    CLog::Log(LOGINFO, "JH m_videobuffer.pts={}", m_videobuffer.pts);
+
+	// 4. Log m_lastPTS
+	if ((int64_t)m_lastPTS == (int64_t)DVD_NOPTS_VALUE)
+	    CLog::Log(LOGINFO, "JH m_lastPTS=DVD_NOPTS_VALUE");
+	else
+	    CLog::Log(LOGINFO, "JH m_lastPTS={}", m_lastPTS);
 
     if (m_codecControlFlags & DVD_CODEC_CTRL_DROP)
     {
