@@ -1684,26 +1684,26 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
       m_lastPTS = pts;
     }
 
-	// 1. Log the Entry Flag
+	// Log the Entry Flag
 	CLog::Log(LOGINFO, "JH Logic: EnteredIF={}", enteredIf ? "YES" : "NO");
 
-	// 2. Log m_videobuffer.dts
-	if ((int64_t)m_videobuffer.dts == (int64_t)DVD_NOPTS_VALUE)
-	    CLog::Log(LOGINFO, "JH m_videobuffer.dts=DVD_NOPTS_VALUE");
-	else
-	    CLog::Log(LOGINFO, "JH m_videobuffer.dts={}", m_videobuffer.dts);
-
-	// 3. Log m_videobuffer.pts
+	// Log m_videobuffer.pts
 	if ((int64_t)m_videobuffer.pts == (int64_t)DVD_NOPTS_VALUE)
 	    CLog::Log(LOGINFO, "JH m_videobuffer.pts=DVD_NOPTS_VALUE");
 	else
 	    CLog::Log(LOGINFO, "JH m_videobuffer.pts={}", m_videobuffer.pts);
 
-	// 4. Log m_lastPTS
+	// Log m_lastPTS
 	if ((int64_t)m_lastPTS == (int64_t)DVD_NOPTS_VALUE)
 	    CLog::Log(LOGINFO, "JH m_lastPTS=DVD_NOPTS_VALUE");
 	else
 	    CLog::Log(LOGINFO, "JH m_lastPTS={}", m_lastPTS);
+
+	// Log m_dtsShift
+	CLog::Log(LOGINFO, "JH m_dtsShift={}", m_dtsShift);
+
+	// Log m_OutputDuration
+	CLog::Log(LOGINFO, "JH m_OutputDuration={}", m_OutputDuration);
 
     if (m_codecControlFlags & DVD_CODEC_CTRL_DROP)
     {
