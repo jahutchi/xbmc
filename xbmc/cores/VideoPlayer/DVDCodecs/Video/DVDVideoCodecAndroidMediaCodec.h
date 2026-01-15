@@ -61,7 +61,8 @@ public:
            int textureId,
            std::shared_ptr<CJNISurfaceTexture> surfaceTexture,
            std::shared_ptr<CDVDMediaCodecOnFrameAvailable> frameAvailable,
-           std::shared_ptr<jni::CJNIXBMCVideoView> videoView);
+           std::shared_ptr<jni::CJNIXBMCVideoView> videoView,
+           uint32_t fpsDuration);
 
   // meat and potatoes
   bool WaitForFrame(int millis);
@@ -80,6 +81,7 @@ public:
 private:
   int m_bufferId = -1;
   unsigned int m_textureId = 0;
+  uint32_t m_fpsDuration = 0;
   // shared_ptr bits, shared between
   // CDVDVideoCodecAndroidMediaCodec and LinuxRenderGLES.
   std::shared_ptr<CJNISurfaceTexture> m_surfacetexture;

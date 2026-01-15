@@ -105,13 +105,15 @@ void CMediaCodecVideoBuffer::Set(int bufferId,
                                  int textureId,
                                  std::shared_ptr<CJNISurfaceTexture> surfacetexture,
                                  std::shared_ptr<CDVDMediaCodecOnFrameAvailable> frameready,
-                                 std::shared_ptr<jni::CJNIXBMCVideoView> videoview)
+                                 std::shared_ptr<jni::CJNIXBMCVideoView> videoview,
+                                 uint32_t fpsDuration)
 {
   m_bufferId = bufferId;
   m_textureId = textureId;
   m_surfacetexture = std::move(surfacetexture);
   m_frameready = std::move(frameready);
   m_videoview = std::move(videoview);
+  m_fpsDuration = fpsDuration;
 }
 
 bool CMediaCodecVideoBuffer::WaitForFrame(int millis)
@@ -209,6 +211,33 @@ void CMediaCodecVideoBuffer::UpdateTexImage()
 
 void CMediaCodecVideoBuffer::RenderUpdate(const CRect &DestRect, int64_t displayTime)
 {
+  static int64_t lastDisplayTime = 0;
+
+  // 50fps trust video fps rate over MediaCodec/Choreographer timings
+  if (m_fpsDuration == 20000 && lastDisplayTime > 0) {
+    int64_t desiredDurationNs = static_cast<int64_t>(m_fpsDuration) * 1000LL; // us (double) -> ns (int64)
+    int64_t expectedNext = lastDisplayTime + desiredDurationNs; // expected timestamp for this frame
+    int64_t drift = std::llabs(displayTime - expectedNext); // check for drift (seeking, pausing, resync)
+    int64_t tolerance = (desiredDurationNs * 5) / 2; // 2.5 frames tolerance
+    if (drift > tolerance) { // if we've drifted too far from Choreographer then resync.
+      CLog::Log(LOGDEBUG, "CMediaCodecVideoBuffer::RenderUpdate: large drift detected: {} tolerance: {}, resyncing to choreographer time: {}",
+                          drift, tolerance, displayTime);
+    } else {
+      CLog::Log(LOGDEBUG, LOGVIDEO,
+                          "CMediaCodecVideoBuffer::RenderUpdate: smoothing frame render time, previous: {} choreographer: {} new: {} drift: {} tolerance: {}",
+                          lastDisplayTime, displayTime, expectedNext, drift, tolerance);
+      displayTime = expectedNext;
+    }
+    // protect monotonic order
+    if (displayTime <= lastDisplayTime) {
+      CLog::Log(LOGDEBUG, "CMediaCodecVideoBuffer::RenderUpdate: displayTime was non-monotonic, was: {} now {}, adjusting to: {}",
+                          lastDisplayTime, displayTime, expectedNext);
+      displayTime = expectedNext;
+    }
+  }
+
+  lastDisplayTime = displayTime;
+
   CRect surfRect = m_videoview->getSurfaceRect();
   if (DestRect != surfRect)
   {
@@ -1688,7 +1717,7 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
       m_videobuffer.videoBuffer->Release();
 
     m_videobuffer.videoBuffer = m_videoBufferPool->Get();
-    static_cast<CMediaCodecVideoBuffer*>(m_videobuffer.videoBuffer)->Set(index, m_textureId,  m_surfaceTexture, m_frameAvailable, m_jnivideoview);
+    static_cast<CMediaCodecVideoBuffer*>(m_videobuffer.videoBuffer)->Set(index, m_textureId,  m_surfaceTexture, m_frameAvailable, m_jnivideoview, m_fpsDuration);
 
     rtn = 1;
   }
