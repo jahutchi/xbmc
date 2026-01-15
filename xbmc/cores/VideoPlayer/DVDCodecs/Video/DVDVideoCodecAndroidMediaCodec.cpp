@@ -34,6 +34,8 @@
 #include "utils/TimeUtils.h"
 #include "utils/log.h"
 #include "windowing/android/AndroidUtils.h"
+#include "windowing/GraphicContext.h"
+#include "windowing/WinSystem.h"
 
 #include "platform/android/activity/JNIXBMCSurfaceTextureOnFrameAvailableListener.h"
 #include "platform/android/activity/XBMCApp.h"
@@ -105,13 +107,15 @@ void CMediaCodecVideoBuffer::Set(int bufferId,
                                  int textureId,
                                  std::shared_ptr<CJNISurfaceTexture> surfacetexture,
                                  std::shared_ptr<CDVDMediaCodecOnFrameAvailable> frameready,
-                                 std::shared_ptr<jni::CJNIXBMCVideoView> videoview)
+                                 std::shared_ptr<jni::CJNIXBMCVideoView> videoview,
+                                 uint32_t fpsDuration)
 {
   m_bufferId = bufferId;
   m_textureId = textureId;
   m_surfacetexture = std::move(surfacetexture);
   m_frameready = std::move(frameready);
   m_videoview = std::move(videoview);
+  m_fpsDuration = fpsDuration;
 }
 
 bool CMediaCodecVideoBuffer::WaitForFrame(int millis)
@@ -145,8 +149,16 @@ void CMediaCodecVideoBuffer::ReleaseOutputBuffer(bool render, int64_t displayTim
 
   if (!render || displayTime == 0)
     codec->releaseOutputBuffer(m_bufferId, render);
-  else
+  else {
     codec->releaseOutputBufferAtTime(m_bufferId, displayTime);
+    // // 50fps trust video fps rate over MediaCodec/Choreographer timings
+    // if (m_fpsDuration == 20000) {
+    //   CLog::Log(LOGDEBUG, LOGVIDEO, "CMediaCodecVideoBuffer::ReleaseOutputBuffer: calling GetFixedCadenceDisplayTime m_fpsDuration: {}", m_fpsDuration);
+    //   codec->releaseOutputBufferAtTime(m_bufferId, GetFixedCadenceDisplayTime(displayTime));
+    // } else {
+    //  codec->releaseOutputBufferAtTime(m_bufferId, displayTime);
+    // }
+  }
   m_bufferId = -1; //mark released
 
   if (xbmc_jnienv()->ExceptionCheck())
@@ -231,6 +243,34 @@ void CMediaCodecVideoBuffer::RenderUpdate(const CRect &DestRect, int64_t display
   }
   else
     ReleaseOutputBuffer(true, displayTime);
+}
+
+// Unused but was a decent concept
+int64_t CMediaCodecVideoBuffer::GetFixedCadenceDisplayTime(int64_t displayTime)
+{
+  static int64_t lastDisplayTime = 0;
+  int64_t desiredDurationNs = static_cast<int64_t>(m_fpsDuration) * 1000LL; // us (double) -> ns (int64)
+  int64_t expectedNext = lastDisplayTime + desiredDurationNs; // expected timestamp for this frame
+  int64_t drift = std::llabs(displayTime - expectedNext); // check for drift (seeking, pausing, resync)
+  int64_t tolerance = (desiredDurationNs * 5) / 2; // 2.5 frames tolerance
+
+  if (lastDisplayTime <= 0) { //first frame ?
+    CLog::Log(LOGDEBUG, LOGVIDEO, "CMediaCodecVideoBuffer::GetFixedCadenceDisplayTime: anchoring lastDisplayTime to choreographer: {} (first frame)", displayTime);
+    lastDisplayTime = displayTime;
+    return displayTime;
+  } else if (drift > tolerance) { // if we've drifted too far from Choreographer then resync.
+    CLog::Log(LOGINFO, "CMediaCodecVideoBuffer::GetFixedCadenceDisplayTime: large drift detected: {} tolerance: {}, resyncing to choreographer: {}",
+                        drift, tolerance, displayTime);
+    lastDisplayTime = displayTime;
+    return displayTime;
+  } else {
+    CLog::Log(LOGDEBUG, LOGVIDEO,
+                        "CMediaCodecVideoBuffer::GetFixedCadenceDisplayTime: smoothing frame render time, previous: {} choreographer: {} new: {} drift: {} tolerance: {}",
+                          lastDisplayTime, displayTime, expectedNext, drift, tolerance);
+    displayTime = expectedNext;
+    lastDisplayTime = displayTime;
+    return displayTime;
+  }
 }
 
 /*****************************************************************************/
@@ -377,6 +417,7 @@ bool CDVDVideoCodecAndroidMediaCodec::Open(CDVDStreamInfo &hints, CDVDCodecOptio
   m_indexInputBuffer = -1;
   m_dtsShift = DVD_NOPTS_VALUE;
   m_useDTSforPTS = false;
+  m_frameCount = 0;
 
   switch(m_hints.codec)
   {
@@ -1281,6 +1322,15 @@ CDVDVideoCodec::VCReturn CDVDVideoCodecAndroidMediaCodec::GetPicture(VideoPictur
 
       m_videobuffer.videoBuffer = nullptr;
 
+     m_frameCount++;
+     if (m_frameCount == 3) {  //after a couple of frames, force a refresh rate switch back and forth
+        RESOLUTION res = CServiceBroker::GetWinSystem()->GetGfxContext().GetVideoResolution();
+        RESOLUTION_INFO info = CServiceBroker::GetWinSystem()->GetGfxContext().GetResInfo(res);
+        CLog::Log(LOGDEBUG, "Forcing back<->forth refresh rate switch {}x{}@{:.3f}<->system default display", info.iWidth, info.iHeight, info.fRefreshRate);
+        // Request mode switch to primary mode then back to our mode
+        CServiceBroker::GetAppMessenger()->PostMsg(TMSG_SETVIDEORESOLUTION, 1, 1);
+        CServiceBroker::GetAppMessenger()->PostMsg(TMSG_SETVIDEORESOLUTION, res, 1);
+      }
       return VC_PICTURE;
     }
     else
@@ -1687,7 +1737,7 @@ int CDVDVideoCodecAndroidMediaCodec::GetOutputPicture(void)
       m_videobuffer.videoBuffer->Release();
 
     m_videobuffer.videoBuffer = m_videoBufferPool->Get();
-    static_cast<CMediaCodecVideoBuffer*>(m_videobuffer.videoBuffer)->Set(index, m_textureId,  m_surfaceTexture, m_frameAvailable, m_jnivideoview);
+    static_cast<CMediaCodecVideoBuffer*>(m_videobuffer.videoBuffer)->Set(index, m_textureId,  m_surfaceTexture, m_frameAvailable, m_jnivideoview, m_fpsDuration);
 
     rtn = 1;
   }
