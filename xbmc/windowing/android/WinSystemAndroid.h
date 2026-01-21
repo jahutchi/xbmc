@@ -61,6 +61,8 @@ public:
   CHDRCapabilities GetDisplayHDRCapabilities() const override;
   float GetGuiSdrPeakLuminance() const override;
 
+  std::unique_ptr<CVideoSync> GetVideoSync(CVideoReferenceClock* clock) override;
+
 protected:
   std::unique_ptr<KODI::WINDOWING::IOSScreenSaver> GetOSScreenSaverImpl() override;
   void OnTimeout() override;

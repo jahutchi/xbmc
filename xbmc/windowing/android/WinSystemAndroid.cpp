@@ -10,6 +10,7 @@
 
 #include "OSScreenSaverAndroid.h"
 #include "ServiceBroker.h"
+#include "VideoSyncAndroid.h"
 #include "WinEventsAndroid.h"
 #include "addons/interfaces/platform/android/System.h"
 #include "cores/RetroPlayer/process/android/RPProcessInfoAndroid.h"
@@ -327,4 +328,11 @@ float CWinSystemAndroid::GetGuiSdrPeakLuminance() const
   const int guiSdrPeak = settings->GetInt(CSettings::SETTING_VIDEOSCREEN_GUISDRPEAKLUMINANCE);
 
   return ((0.7f * guiSdrPeak + 30.0f) / 100.0f);
+}
+
+std::unique_ptr<CVideoSync> CWinSystemAndroid::GetVideoSync(CVideoReferenceClock* clock)
+{
+  std::unique_ptr<CVideoSync> pVSync(new CVideoSyncAndroid(clock));
+  CLog::Log(LOGDEBUG, "CWinSystemAndroid::GetVideoSync got new clock");
+  return pVSync;
 }
