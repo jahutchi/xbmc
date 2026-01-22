@@ -67,6 +67,7 @@ CWinSystemAndroid::~CWinSystemAndroid()
 
 bool CWinSystemAndroid::InitWindowSystem()
 {
+  CLog::Log(LOGINFO, "JH CWinSystemAndroid::{}", __FUNCTION__);
   m_nativeDisplay = EGL_DEFAULT_DISPLAY;
 
   m_android = new CAndroidUtils();
