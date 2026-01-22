@@ -1589,6 +1589,7 @@ void CXBMCApp::onAudioFocusChange(int focusChange)
 
 void CXBMCApp::InitFrameCallback(CVideoSyncAndroid* syncImpl)
 {
+  CLog::Log(LOGINFO, "JH CXBMCApp::InitFrameCallback");
   m_syncImpl = syncImpl;
 }
 
