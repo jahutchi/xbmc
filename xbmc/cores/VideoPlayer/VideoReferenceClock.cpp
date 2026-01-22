@@ -80,6 +80,8 @@ void CVideoReferenceClock::Process()
       CLog::Log(LOGDEBUG, "JH CVideoReferenceClock: Process() m_pVideoSync was set - attempting setup");
       SetupSuccess = m_pVideoSync->Setup();
       UpdateRefreshrate();
+    } else {
+      CLog::Log(LOGDEBUG, "JH CVideoReferenceClock: Process() m_pVideoSync was NOT set");
     }
 
     std::unique_lock<CCriticalSection> SingleLock(m_CritSection);
