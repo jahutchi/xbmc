@@ -46,8 +46,14 @@ CVideoReferenceClock::~CVideoReferenceClock()
 
 void CVideoReferenceClock::Start()
 {
-  if(CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK) && !IsRunning())
+  CLog::Log(LOGDEBUG, "JH VideoReferenceClock::Start called, usedisplayasclock={} IsRunning()={}",
+          CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK),IsRunning());
+  if(CServiceBroker::GetSettingsComponent()->GetSettings()->GetBool(CSettings::SETTING_VIDEOPLAYER_USEDISPLAYASCLOCK) && !IsRunning()) {
+    CLog::Log(LOGDEBUG, "JH CVideoReferenceClock: Proceeding with Create() in CVideoReferenceClock::Start");
     Create();
+  } else {
+    CLog::Log(LOGDEBUG, "JH CVideoReferenceClock: NOT Proceeding with Create() in CVideoReferenceClock::Start");
+  }
 }
 
 void CVideoReferenceClock::UpdateClock(int NrVBlanks, uint64_t time)
