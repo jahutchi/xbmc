@@ -77,6 +77,7 @@ void CVideoReferenceClock::Process()
 
     if (m_pVideoSync)
     {
+      CLog::Log(LOGDEBUG, "JH CVideoReferenceClock: Process() m_pVideoSync was set - attempting setup");
       SetupSuccess = m_pVideoSync->Setup();
       UpdateRefreshrate();
     }
