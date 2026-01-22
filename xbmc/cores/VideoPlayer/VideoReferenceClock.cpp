@@ -69,6 +69,8 @@ void CVideoReferenceClock::Process()
   bool SetupSuccess = false;
   int64_t Now;
 
+  CLog::Log(LOGDEBUG, "JH CVideoReferenceClock: Process() Started - m_bStop={}", m_bStop);
+
   while(!m_bStop)
   {
     m_pVideoSync = CServiceBroker::GetWinSystem()->GetVideoSync(this);
