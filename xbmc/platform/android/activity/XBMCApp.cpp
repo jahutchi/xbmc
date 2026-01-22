@@ -1600,8 +1600,12 @@ void CXBMCApp::DeinitFrameCallback()
 
 void CXBMCApp::doFrame(int64_t frameTimeNanos)
 {
-  if (m_syncImpl)
+  if (m_syncImpl) {
+    CLog::Log(LOGINFO, "JH CXBMCApp::doFrame is being called with FrameCallback :-)");
     m_syncImpl->FrameCallback(frameTimeNanos);
+  } else {
+    CLog::Log(LOGINFO, "JH CXBMCApp::doFrame called without FrameCallback");
+  }
 
   // Calculate the time, when next surface buffer should be rendered
   m_frameTimeNanos = frameTimeNanos;
